@@ -1,0 +1,12 @@
+{
+  "name": "AURELIS Autonomous Art House",
+  "short_name": "AURELIS",
+  "description": "Art That Lives. A Gallery That Never Sleeps.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0a09",
+  "theme_color": "#0b0a09",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

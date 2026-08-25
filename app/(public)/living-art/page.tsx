@@ -1,0 +1,5 @@
+import { PageHero, DemoNotice } from "@/components/site/page-elements";
+import { artworks } from "@/components/site/catalog";
+import { ArtworkCard } from "@/components/artwork/artwork-card";
+export const metadata = { title: "Living Art" };
+export default function LivingArtPage() { const living = artworks.filter((artwork) => artwork.living); return <><PageHero eyebrow="Motion atelier" title="Art that keeps its composure—and comes alive." description="Subtle motion, changing light, environmental cadence, and restrained narrative extend the work without replacing it. Nothing autoplays with sound."/><DemoNotice>Motion is simulated in demo mode. Provider-generated video activates only after safety and human review.</DemoNotice><section className="px-5 py-20 lg:px-10"><div className="mx-auto max-w-[1450px]"><div className="grid gap-x-7 gap-y-16 md:grid-cols-2">{living.map((artwork,index) => <div key={artwork.id} className={index % 4 === 1 ? "md:mt-20" : ""}><ArtworkCard artwork={artwork}/></div>)}</div></div></section></>; }

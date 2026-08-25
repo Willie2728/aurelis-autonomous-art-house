@@ -1,0 +1,1 @@
+export default function Loading() { return <div className="grid min-h-[70vh] place-items-center px-5"><div className="text-center"><div className="mx-auto size-12 animate-spin rounded-full border border-white/15 border-t-[#c8a968]"/><p className="mt-6 eyebrow text-white/35">Preparing the gallery</p></div></div>; }

@@ -1,0 +1,777 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  VISITOR
+  MEMBER
+  CURATOR
+  OPERATOR
+  FOUNDER
+  ADMIN
+}
+
+enum RecordStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  WAITING_APPROVAL
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PAID
+  PRODUCTION
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum ApprovalStatus {
+  AUTO_APPROVED
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum ProviderMode {
+  SIMULATED
+  LIVE
+  DISABLED
+}
+
+enum AssetKind {
+  IMAGE
+  POSTER
+  VIDEO
+  AUDIO
+  MODEL
+  DOCUMENT
+  MOCKUP
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  role         Role      @default(VISITOR)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  profile      Profile?
+  preferences  Preference[]
+  memberships Membership[]
+  carts        Cart[]
+  orders       Order[]
+  favorites    Favorite[]
+  consents     ConsentRecord[]
+  auditLogs    AuditLog[]
+}
+
+model Profile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String?
+  phone       String?
+  company     String?
+  locale      String  @default("en-US")
+  timezone    String  @default("America/Los_Angeles")
+}
+
+model Preference {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     Json
+  consented Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, key])
+}
+
+model Membership {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  tier       String
+  status     RecordStatus @default(ACTIVE)
+  startsAt   DateTime     @default(now())
+  renewsAt   DateTime?
+  externalId String?
+}
+
+model ArtistIdentity {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  biography   String
+  region      String
+  medium      String
+  philosophy  String
+  palette     Json
+  subject     String
+  aiGenerated Boolean   @default(true)
+  artworks    Artwork[]
+  createdAt   DateTime  @default(now())
+}
+
+model GalleryRoom {
+  id           String       @id @default(cuid())
+  slug         String       @unique
+  name         String
+  architecture String
+  atmosphere   String
+  material     String
+  lighting     String
+  accent       String
+  description  String
+  status       RecordStatus @default(ACTIVE)
+  artworks     Artwork[]
+}
+
+model Medium {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  artworks    Artwork[]
+}
+
+model Artwork {
+  id                  String          @id @default(cuid())
+  slug                String          @unique
+  title               String
+  artistIdentityId    String
+  artistIdentity      ArtistIdentity  @relation(fields: [artistIdentityId], references: [id])
+  galleryRoomId       String?
+  galleryRoom         GalleryRoom?    @relation(fields: [galleryRoomId], references: [id])
+  mediumId            String?
+  medium              Medium?         @relation(fields: [mediumId], references: [id])
+  category            String
+  region              String
+  palette             Json
+  mood                String
+  orientation         String
+  description         String
+  curatorialStatement String
+  provenance          String
+  searchTags          String[]
+  aiGenerated         Boolean         @default(true)
+  featured            Boolean         @default(false)
+  livingCompatible    Boolean         @default(false)
+  available           Boolean         @default(true)
+  status              RecordStatus    @default(DRAFT)
+  assets              ArtworkAsset[]
+  versions            ArtworkVersion[]
+  livingArtwork       LivingArtwork?
+  prices              Price[]
+  licenses            License[]
+  collectionItems     CollectionArtwork[]
+  exhibitionItems     ExhibitionArtwork[]
+  cartItems           CartItem[]
+  orderItems          OrderItem[]
+  favorites           Favorite[]
+  comparisonItems     ComparisonItem[]
+  previews            RoomPreview[]
+  safetyFlags         SafetyFlag[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  @@index([category, region])
+  @@index([status, available])
+}
+
+model ArtworkAsset {
+  id        String    @id @default(cuid())
+  artworkId String
+  artwork   Artwork   @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  kind      AssetKind
+  url       String
+  mimeType  String
+  width     Int?
+  height    Int?
+  bytes     Int?
+  altText   String?
+  checksum  String?
+  createdAt DateTime  @default(now())
+}
+
+model ArtworkVersion {
+  id          String   @id @default(cuid())
+  artworkId   String
+  artwork     Artwork  @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  version     Int
+  prompt      String?
+  metadata    Json
+  similarity Float?
+  approvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  @@unique([artworkId, version])
+}
+
+model LivingArtwork {
+  id                  String         @id @default(cuid())
+  artworkId           String         @unique
+  artwork             Artwork        @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  staticImageUrl      String
+  posterImageUrl      String
+  videoSourceUrl      String
+  provider            String
+  durationSeconds     Int
+  aspectRatio         String
+  hasAudio            Boolean        @default(false)
+  loop                 Boolean        @default(true)
+  motionPrompt        String
+  safetyStatus        RecordStatus
+  approvalStatus      ApprovalStatus
+  generationCostCents Int
+  createdAt           DateTime       @default(now())
+}
+
+model Collection {
+  id          String              @id @default(cuid())
+  slug        String              @unique
+  name        String
+  statement   String
+  featured    Boolean             @default(false)
+  status      RecordStatus        @default(ACTIVE)
+  artworks    CollectionArtwork[]
+  createdAt   DateTime            @default(now())
+}
+
+model CollectionArtwork {
+  collectionId String
+  artworkId    String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  artwork      Artwork    @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  position     Int        @default(0)
+  @@id([collectionId, artworkId])
+}
+
+model Exhibition {
+  id        String              @id @default(cuid())
+  slug      String              @unique
+  name      String
+  subtitle  String
+  status    RecordStatus        @default(DRAFT)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  artworks  ExhibitionArtwork[]
+  createdAt DateTime            @default(now())
+}
+
+model ExhibitionArtwork {
+  exhibitionId String
+  artworkId    String
+  exhibition   Exhibition @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  artwork      Artwork    @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  position     Int        @default(0)
+  @@id([exhibitionId, artworkId])
+}
+
+model Material {
+  id             String  @id @default(cuid())
+  slug           String  @unique
+  name           String
+  multiplier     Decimal @db.Decimal(8, 4)
+  productionNote String?
+}
+
+model Size {
+  id           String  @id @default(cuid())
+  code         String  @unique
+  label        String
+  widthInches  Decimal @db.Decimal(8, 2)
+  heightInches Decimal @db.Decimal(8, 2)
+  multiplier   Decimal @db.Decimal(8, 4)
+}
+
+model Frame {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  name      String
+  costCents Int
+  active    Boolean @default(true)
+}
+
+model Price {
+  id          String   @id @default(cuid())
+  artworkId   String
+  artwork     Artwork  @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  sku         String   @unique
+  currency    String   @default("USD")
+  amountCents Int
+  configuration Json
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model License {
+  id          String   @id @default(cuid())
+  artworkId   String
+  artwork     Artwork  @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  kind        String
+  terms       String
+  amountCents Int
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id])
+  currency  String     @default("USD")
+  items     CartItem[]
+  expiresAt DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id            String  @id @default(cuid())
+  cartId        String
+  cart          Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  artworkId     String
+  artwork       Artwork @relation(fields: [artworkId], references: [id])
+  quantity      Int     @default(1)
+  unitPriceCents Int
+  configuration Json
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id])
+  status        OrderStatus   @default(DRAFT)
+  currency      String        @default("USD")
+  subtotalCents Int
+  taxCents      Int           @default(0)
+  shippingCents Int           @default(0)
+  totalCents    Int
+  items         OrderItem[]
+  payments      Payment[]
+  shipments     Shipment[]
+  refunds       Refund[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  artworkId      String
+  artwork        Artwork @relation(fields: [artworkId], references: [id])
+  titleSnapshot  String
+  quantity       Int
+  unitPriceCents Int
+  configuration  Json
+}
+
+model Payment {
+  id          String       @id @default(cuid())
+  orderId     String
+  order       Order        @relation(fields: [orderId], references: [id])
+  provider    String
+  externalRef String?      @unique
+  status      RecordStatus @default(PENDING)
+  amountCents Int
+  currency    String       @default("USD")
+  createdAt   DateTime     @default(now())
+}
+
+model Shipment {
+  id          String       @id @default(cuid())
+  orderId     String
+  order       Order        @relation(fields: [orderId], references: [id])
+  carrier     String?
+  trackingRef String?
+  status      RecordStatus @default(PENDING)
+  address     Json
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+}
+
+model Refund {
+  id          String         @id @default(cuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id])
+  amountCents Int
+  reason      String
+  status      ApprovalStatus @default(PENDING)
+  approvalId  String?
+  createdAt   DateTime       @default(now())
+}
+
+model CustomerCase {
+  id        String       @id @default(cuid())
+  userId    String?
+  subject   String
+  detail    String
+  status    RecordStatus @default(PENDING)
+  priority  String       @default("normal")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model Environment {
+  id                 String        @id @default(cuid())
+  slug               String        @unique
+  name               String
+  type               String
+  wallColors         String[]
+  flooring           String
+  lighting           String
+  perspectiveProfile String
+  previews           RoomPreview[]
+}
+
+model RoomPreview {
+  id            String      @id @default(cuid())
+  userId        String?
+  artworkId     String
+  artwork       Artwork     @relation(fields: [artworkId], references: [id])
+  environmentId String
+  environment   Environment @relation(fields: [environmentId], references: [id])
+  configuration Json
+  shareToken    String?     @unique
+  createdAt     DateTime    @default(now())
+}
+
+model Favorite {
+  userId    String
+  artworkId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artwork   Artwork  @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@id([userId, artworkId])
+}
+
+model Comparison {
+  id        String           @id @default(cuid())
+  userId    String?
+  name      String?
+  items     ComparisonItem[]
+  createdAt DateTime         @default(now())
+}
+
+model ComparisonItem {
+  comparisonId String
+  artworkId    String
+  comparison   Comparison @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  artwork      Artwork    @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  @@id([comparisonId, artworkId])
+}
+
+model Guide {
+  id             String       @id @default(cuid())
+  slug           String       @unique
+  name           String
+  role           String
+  status         RecordStatus @default(ACTIVE)
+  spendingLimitCents Int      @default(0)
+  providerLimits Json
+  tasks          GuideTask[]
+  runs           GuideRun[]
+  createdAt      DateTime     @default(now())
+}
+
+model GuideTask {
+  id          String       @id @default(cuid())
+  guideId     String
+  guide       Guide        @relation(fields: [guideId], references: [id])
+  title       String
+  objective   String
+  status      JobStatus    @default(QUEUED)
+  priority    Int          @default(0)
+  requiresApproval Boolean @default(false)
+  runAfter    DateTime     @default(now())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model GuideRun {
+  id          String    @id @default(cuid())
+  guideId     String
+  guide       Guide     @relation(fields: [guideId], references: [id])
+  taskId      String?
+  status      JobStatus @default(RUNNING)
+  input       Json
+  output      Json?
+  logs        Json
+  score       Float?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+
+model Approval {
+  id          String         @id @default(cuid())
+  type        String
+  title       String
+  status      ApprovalStatus @default(PENDING)
+  risk        String
+  requestedBy String
+  payload     Json
+  humanComment String?
+  decidedBy  String?
+  decidedAt  DateTime?
+  createdAt  DateTime       @default(now())
+}
+
+model Provider {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  name        String
+  category    String
+  mode        ProviderMode @default(SIMULATED)
+  status      RecordStatus @default(PENDING)
+  permissionScope String
+  estimatedCost String?
+  credentialReferences ProviderCredentialReference[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ProviderCredentialReference {
+  id          String   @id @default(cuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  envVarName  String
+  secretStoreReference String?
+  lastFour    String?
+  createdAt   DateTime @default(now())
+  // Raw secrets are never stored in this table.
+}
+
+model GenerationJob {
+  id             String    @id @default(cuid())
+  status         JobStatus @default(QUEUED)
+  operation      String
+  prompt         String
+  diversityProfile Json
+  estimatedCostCents Int
+  actualCostCents Int?
+  providerId     String?
+  idempotencyKey String    @unique
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  runAfter       DateTime  @default(now())
+  result         Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model MotionJob {
+  id             String    @id @default(cuid())
+  artworkId      String
+  status         JobStatus @default(QUEUED)
+  prompt         String
+  preserveComposition Boolean @default(true)
+  durationSeconds Int
+  providerId     String?
+  idempotencyKey String    @unique
+  attempts       Int       @default(0)
+  result         Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model ResearchSignal {
+  id              String       @id @default(cuid())
+  title           String
+  source          String
+  sourceUrl       String
+  permissionBasis String
+  observedAt      DateTime
+  evidence        String
+  status          RecordStatus @default(PENDING)
+  createdAt       DateTime     @default(now())
+}
+
+model Trend {
+  id                  String         @id @default(cuid())
+  name                String
+  source              String
+  confidence          Float
+  momentum            Float
+  suggestedCategory   String
+  suggestedCollection String
+  riskNotes           String
+  evidenceLinks       String[]
+  humanReviewStatus   ApprovalStatus @default(PENDING)
+  observedAt          DateTime
+}
+
+model Campaign {
+  id                String          @id @default(cuid())
+  name              String
+  channel           String
+  status            RecordStatus    @default(DRAFT)
+  goal              String
+  dailyBudgetCents  Int             @default(0)
+  approvalId        String?
+  audience          Json
+  assets            CampaignAsset[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model CampaignAsset {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  kind        String
+  content     String
+  mediaUrl    String?
+  variant     String?
+  metrics     Json?
+  createdAt   DateTime @default(now())
+}
+
+model Budget {
+  id                     String        @id @default(cuid())
+  name                   String
+  allocatedCents         Int
+  approvalThresholdCents Int
+  periodStart            DateTime
+  periodEnd              DateTime
+  entries                LedgerEntry[]
+}
+
+model LedgerEntry {
+  id          String          @id @default(cuid())
+  budgetId    String
+  budget      Budget          @relation(fields: [budgetId], references: [id])
+  direction   LedgerDirection
+  amountCents Int
+  currency    String          @default("USD")
+  category    String
+  description String
+  externalRef String?
+  createdAt   DateTime        @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  actorType   String
+  actorId     String
+  action      String
+  resource    String
+  resourceId  String?
+  metadata    Json
+  ipHash      String?
+  createdAt   DateTime @default(now())
+  @@index([resource, resourceId])
+}
+
+model ConsentRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose     String
+  granted     Boolean
+  version     String
+  metadata    Json
+  createdAt   DateTime @default(now())
+  revokedAt   DateTime?
+}
+
+model SafetyFlag {
+  id          String         @id @default(cuid())
+  artworkId   String?
+  artwork     Artwork?       @relation(fields: [artworkId], references: [id])
+  category    String
+  severity    String
+  detail      String
+  status      ApprovalStatus @default(PENDING)
+  resolverId  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+}
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  query     Json
+  createdAt DateTime @default(now())
+}
+
+model DiscountCode {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  percentOff     Int?
+  amountOffCents Int?
+  active         Boolean  @default(true)
+  expiresAt      DateTime?
+}
+
+model GiftCard {
+  id               String   @id @default(cuid())
+  codeHash         String   @unique
+  balanceCents     Int
+  currency         String   @default("USD")
+  status           RecordStatus @default(ACTIVE)
+  expiresAt        DateTime?
+  createdAt        DateTime @default(now())
+}
+
+model KillSwitch {
+  id          String   @id
+  label       String
+  engaged     Boolean  @default(false)
+  changedBy   String?
+  changedAt   DateTime?
+  reason      String?
+}
+
+model DailyReport {
+  id          String   @id @default(cuid())
+  reportDate  DateTime @unique @db.Date
+  art         Json
+  marketing   Json
+  commerce    Json
+  risks       String[]
+  nextActions String[]
+  mode        ProviderMode @default(SIMULATED)
+  createdAt   DateTime @default(now())
+}
+
+model HumanRequest {
+  id             String       @id @default(cuid())
+  title          String
+  category       String
+  detail         String
+  status         RecordStatus @default(PENDING)
+  owner          String
+  requestedAt    DateTime     @default(now())
+  acknowledgedAt DateTime?
+  reminderAfter  DateTime?
+  resolvedAt     DateTime?
+}
