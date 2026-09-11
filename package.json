@@ -43,7 +43,7 @@
     "prisma": "^7.9.1",
     "tailwindcss": "^4.3.3",
     "typescript": "6.0.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@10.20.0",
   "engines": {
